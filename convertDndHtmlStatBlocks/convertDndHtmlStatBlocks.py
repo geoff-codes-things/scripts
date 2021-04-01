@@ -238,11 +238,13 @@ def generatePlainText(creatures):
 		if creature['actions'] != None:
 			plainttextstr += generateItemsText("Actions", creature['actionsarray'])
 		if creature['reactions'] != None:
-			plainttextstr += generateItemsText("Reactions", creature['reactionssarray'])
+			plainttextstr += generateItemsText("Reactions", creature['reactionsarray'])
 		if creature['legendaryactions'] != None:
 			plainttextstr += generateItemsText("Legendary Actions", creature['legendaryactionsarray'])
 
 		plainttextstr += "\n"
+
+	return plainttextstr
 
 
 # ============= OUTPUT =============
