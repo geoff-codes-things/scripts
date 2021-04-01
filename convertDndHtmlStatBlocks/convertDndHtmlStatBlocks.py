@@ -373,8 +373,8 @@ def main():
 	except KeyboardInterrupt:
 		sys.exit("\nUser cancelled, stopping...\n")
 	except Exception as e:
-		print("An unexpected Error occurred: " + str(e), sys.stderr)
-		print(traceback.format_exc(), sys.stderr)
+		print >> sys.stderr, "An unexpected Error occurred: " + str(e)
+		print >> sys.stderr, traceback.format_exc()
 		sys.exit(1)
 
 if __name__ == "__main__":
