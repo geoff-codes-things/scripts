@@ -1,0 +1,1 @@
+This script reads standard formatted creature stat blocks for D&D 5e from saved html files and converts them to different formats. It can output plain text, csv, or XML. (XML output is formatted for use with Encounter Plu)
