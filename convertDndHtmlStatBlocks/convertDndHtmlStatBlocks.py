@@ -1,10 +1,11 @@
-import csv
 import sys
+import traceback
 import os
 import re
 import argparse
 import uuid
 import time
+import csv
 
 # ============= PATTERNS =============
 CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n(?P<metadata>.+?)\nArmor Class (?P<ac>.+)\nHit Points (?P<hp>.+)\nSpeed (?P<speed>.+)\n+STR\n(?P<strength>[0-9]+).+\n+DEX\n(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n(?P<intelligence>[0-9]+).+\n+WIS\n(?P<wisdom>[0-9]+).+\n+CHA\n(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n)?(Skills (?P<skills>.+)\n)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n)?(Damage Resistances (?P<damageresistances>.+)\n)?(Damage Immunities (?P<damageimmunities>.+)\n)?(Condition Immunities (?P<conditionimmunities>.+)\n)?(Senses (?P<senses>.+)\n)?(Languages (?P<languages>.+)\n)?(Challenge (?P<challenge>.+)\n)?(?P<attributes>[\S\s]+?)??Actions\n(?P<actions>[\S\s]+?)(\nReactions\n(?P<reactions>[\S\s]+?))?(\nLegendary Actions\n(?P<legendaryactions>[\S\s]+?))?\n{2}', re.MULTILINE)
@@ -34,7 +35,7 @@ def preprocessHtml(files):
 	files = files.replace("\ ","&nbsp;") #super hacky. should do this right with a regex.
 
 	for file in files.split(" "):
-		
+
 		file = file.replace("&nbsp;", " ") # like i said... super hacky.
 
 		verboseprint("processing " + str(file))
@@ -321,7 +322,15 @@ def run():
 		print("Success! Your new file can be found at: " + newfilepath)
 
 def main():
-	run()
+	try:
+		run()
+		sys.exit(0)
+	except KeyboardInterrupt:
+		sys.exit("\nUser cancelled, stopping...\n")
+	except Exception as e:
+		print("An unexpected Error occurred: " + str(e), sys.stderr)
+		print(traceback.format_exc(), sys.stderr)
+		sys.exit(1)
 
 if __name__ == "__main__":
     sys.exit(main())
