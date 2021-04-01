@@ -12,13 +12,14 @@ ITEM_PATTERN = re.compile(r'^(?P<itemtitle>.{0,45})\. (?P<itemdescription>[\S\s]
 METADATA_PATTERN = re.compile(r'(?P<size>Tiny|Small|Medium|Large|Huge|Gargantuan) (?P<type>.+), (?P<alignment>.+)$', re.MULTILINE)
 CRUFT_PATTERN = re.compile(r'<.+?>', re.MULTILINE)
 KEEP_PATTERN = re.compile(r'((.+)?\n){3}Armor Class[\S\s]+?([\s]+?\n){5}', re.MULTILINE)
+RATING_PATTERN = re.compile(r'[0-9]+(\/[0-9]+)?(?= \()', re.MULTILINE)
 PERCEPTION_PATTERN = re.compile(r'(?<=Perception )(\+|-)?[0-9]+', re.MULTILINE)
 TEST_PATTERN = re.compile(r'\nArmor Class (?P<ac>.+)\n.+', re.MULTILINE)
 
 
 # ============= ARGUMENTS =============
 parser = argparse.ArgumentParser()
-parser.add_argument('--files','-f', help='Files to process, string of paths separated by commas. eg "/tmp/A.txt,/tmp/B.txt,/tmp/C.txt" Note: commas in the file names or paths will break things...', type=str, required=True)
+parser.add_argument('--files','-f', help='Files to process, string of paths separated by spaces. Spaces in path or file names should be escaped. eg "/tmp/Animals.txt,/tmp/Beasts\ large.txt,/tmp/Creatures.txt" Note: commas in the file names or paths will break things...', type=str, required=True)
 parser.add_argument('--output','-o', help='Specify type of output - console, csv, xml, or txt. Note: XML is formatted for use as a compendium with Encounter Plus.', choices=["console","csv","xml","txt"], required=False, default='console')
 parser.add_argument('--verbose','-v', help='For debugging', action="store_true", required=False, default=False)
 
@@ -30,7 +31,12 @@ parser.add_argument('--verbose','-v', help='For debugging', action="store_true",
 def preprocessHtml(files):
 	results = "" # used to store results across multiple files
 	
-	for file in files.split(","):
+	files = files.replace("\ ","&nbsp;") #super hacky. should do this right with a regex.
+
+	for file in files.split(" "):
+		
+		file = file.replace("&nbsp;", " ") # like i said... super hacky.
+
 		verboseprint("processing " + str(file))
 		processedfile = "" # used to store reuslts for one particular file at a time
 		reader = open(file, "r")
@@ -48,8 +54,9 @@ def preprocessHtml(files):
 		processedfile = processedfile.replace("\n&nbsp;","")
 
 		# a bunch of special html characters that will break the xml and csv output
-		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":"", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5'}
+		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5'}
 		for badstr, goodstr in replacements.iteritems():
+			verboseprint("Replacing " + badstr + " with " + goodstr)
 			processedfile = processedfile.replace(badstr, goodstr)
 
 		# done, add it to the complete results for all files
@@ -75,12 +82,11 @@ def createItemList(originalstring):
 # Takes a processed string based on the html file(s)
 # Turns it into a array of dictionaries with the values from the stat blocks
 def createDictFromData(incomingdata):
-	verboseprint("Applying match patter for creature stat blocks")
+	verboseprint("Applying match pattern for creature stat blocks")
 	verboseprint(str(CREATURE_PATTERN.pattern))
 	matches = [m.groupdict() for m in CREATURE_PATTERN.finditer(incomingdata)]
 	#matches = re.findall(TEST_PATTERN, incomingdata)
-	verboseprint("Matches found:")
-	verboseprint(str(matches))
+	verboseprint("Matches found:" + str(len(matches)))
 
 	# create arrays of actions / attributes / etc 
 	for match in matches:
@@ -148,7 +154,6 @@ def makeMonsterforEncounterPlus(creature):
 		'int':creature['intelligence'],
 		'wis':creature['wisdom'],
 		'cha':creature['charisma'],
-		'cr':creature['challenge'],
 		'passive':creature['passiveperception']
 		}
 
@@ -156,6 +161,11 @@ def makeMonsterforEncounterPlus(creature):
 	data_for_ep_monster['role'] = "enemy"
 	# another weird requirement for Encounter Plus; "slug" is just the name in lower case with hyphens instead of spaces.
 	data_for_ep_monster['slug'] = creature['name'].lower().replace(" ", "-")
+	# Encounter Plus wants the CR number only, no XP amount.
+	if creature['challenge'] != None:
+		data_for_ep_monster['cr'] = re.search(RATING_PATTERN, creature['challenge']).group()
+	else:
+		data_for_ep_monster['cr'] = 0
 	
 	# time to start creating some XML!
 	xmlstr = ''
@@ -186,6 +196,7 @@ def makeMonsterforEncounterPlus(creature):
 	return xmlstr
 
 def generateXMLforEncounterPlus(creatures):
+	verboseprint("converting " + str(len(creatures)) + " creatures to XML.")
 	xmlstr = '<?xml version="1.0" encoding="utf-8" standalone="no"?>\n'
 	xmlstr += '<compendium>\n'
 	for creature in creatures:
