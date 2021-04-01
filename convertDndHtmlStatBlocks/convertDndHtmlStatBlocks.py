@@ -6,6 +6,11 @@ import argparse
 import uuid
 import time
 import csv
+import xml.etree.ElementTree as ET
+from subprocess import Popen, PIPE
+
+reload(sys)
+sys.setdefaultencoding("utf-8")
 
 # ============= PATTERNS =============
 CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n(?P<metadata>.+?)\nArmor Class (?P<ac>.+)\nHit Points (?P<hp>.+)\nSpeed (?P<speed>.+)\n+STR\n(?P<strength>[0-9]+).+\n+DEX\n(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n(?P<intelligence>[0-9]+).+\n+WIS\n(?P<wisdom>[0-9]+).+\n+CHA\n(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n)?(Skills (?P<skills>.+)\n)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n)?(Damage Resistances (?P<damageresistances>.+)\n)?(Damage Immunities (?P<damageimmunities>.+)\n)?(Condition Immunities (?P<conditionimmunities>.+)\n)?(Senses (?P<senses>.+)\n)?(Languages (?P<languages>.+)\n)?(Challenge (?P<challenge>.+)\n)?(?P<attributes>[\S\s]+?)??Actions\n(?P<actions>[\S\s]+?)(\nReactions\n(?P<reactions>[\S\s]+?))?(\nLegendary Actions\n(?P<legendaryactions>[\S\s]+?))?\n{2}', re.MULTILINE)
@@ -22,6 +27,7 @@ TEST_PATTERN = re.compile(r'\nArmor Class (?P<ac>.+)\n.+', re.MULTILINE)
 parser = argparse.ArgumentParser()
 parser.add_argument('--files','-f', help='Files to process, string of paths separated by spaces. Spaces in path or file names should be escaped. eg "/tmp/Animals.txt,/tmp/Beasts\ large.txt,/tmp/Creatures.txt" Note: commas in the file names or paths will break things...', type=str, required=True)
 parser.add_argument('--output','-o', help='Specify type of output - console, csv, xml, or txt. Note: XML is formatted for use as a compendium with Encounter Plus.', choices=["console","csv","xml","txt"], required=False, default='console')
+parser.add_argument('--xmlinclude','-x', help='Path to an existing xml compendium for EncounterPlus, will keep anything in the existing compendium and add to it.', type=str, required=False)
 parser.add_argument('--verbose','-v', help='For debugging', action="store_true", required=False, default=False)
 
 # ============= PROCESSING =============
@@ -124,7 +130,7 @@ def createDictFromData(incomingdata):
 
 # given a dictionary and a number of indents to put before each value
 # turns it into a string in XML format
-def dictToXML(indent,data):
+def dictToXML(data):
 	indentation = ""
 	xmlstr = ""
 	if indent > 0:
@@ -134,6 +140,15 @@ def dictToXML(indent,data):
 		xmlstr += indentation + "<" + key + ">" + str(data[key]) + "</" + key + ">\n"
 
 	return xmlstr
+
+def createXMLElementsFromDict(topelementname, subelementdict, basexml):
+	newxml = basexml
+	newsublement = ET.SubElement(newxml, topelementname)
+	for key in sorted(subelementdict.keys()):
+		newsubsublement = ET.SubElement(newsublement, str(key))
+		newsubsublement.text = str(subelementdict[key])
+
+	return newxml
 
 # Changes the data structure to align with what Encounter Plus expects for each monster
 # Turns the dict for each monster into an XML block for each monster
@@ -169,42 +184,52 @@ def makeMonsterforEncounterPlus(creature):
 		data_for_ep_monster['cr'] = 0
 	
 	# time to start creating some XML!
-	xmlstr = ''
+	xmlmonster = ET.Element('monster')
 
 	# encounter plus wants a UUID for "id" of each monster
-	xmlstr += '\t<monster id="' + str(uuid.uuid4()) + '">\n'
+	xmlmonster.set('id', str(uuid.uuid4(	)))
 
 	# add all the stuff that's simple to correlate from above
-	xmlstr += dictToXML(2,data_for_ep_monster)
+	for key in data_for_ep_monster.keys():
+		newelement = ET.SubElement(xmlmonster, key)
+		newelement.text = str(data_for_ep_monster[key])
 
 	#deal with the fancier ones, that might be "none" or might be multiple values (eg actions, reactions, etc)
 	if creature['attributes'] != None:
 		for item in creature['attributesarray']:
-			xmlstr += "\t\t<trait>\n" + dictToXML(3,item) + "\t\t</trait>\n"
+			xmlmonster = createXMLElementsFromDict('trait',item,xmlmonster)
 	if creature['actions'] != None:
 		for item in creature['actionsarray']:
-			xmlstr += "\t\t<action>\n" + dictToXML(3,item) + "\t\t</action>\n"
+			xmlmonster = createXMLElementsFromDict('action',item,xmlmonster)
 	if creature['reactions'] != None:
 		for item in creature['reactionsarray']:
-			xmlstr += "\t\t<reaction>\n" + dictToXML(3,item) + "\t\t</reaction>\n"
+			xmlmonster = createXMLElementsFromDict('reaction',item,xmlmonster)
 	if creature['legendaryactions'] != None:
 		for item in creature['legendaryactionsarray']:
-			xmlstr += "\t\t<legendary>\n" + dictToXML(3,item) + "\t\t</legendary>\n"
+			xmlmonster = createXMLElementsFromDict('legendary',item,xmlmonster)
 
-	#close the monster tag
-	xmlstr += '\t</monster>\n'
 
-	return xmlstr
+	return xmlmonster
 
-def generateXMLforEncounterPlus(creatures):
+def generateXMLforEncounterPlus(creatures, startingxml):
 	verboseprint("converting " + str(len(creatures)) + " creatures to XML.")
-	xmlstr = '<?xml version="1.0" encoding="utf-8" standalone="no"?>\n'
-	xmlstr += '<compendium>\n'
+	namesalreadyincompendium = []
+	
+	if startingxml:
+		basexml = ET.parse(startingxml)
+		compendiumxml = basexml.getroot()
+		for monster in compendiumxml.iter('monster'):
+			namesalreadyincompendium.append(monster.get('slug'))
+	else:
+		compendiumxml = ET.Element('compendium')
 	for creature in creatures:
-		xmlstr += makeMonsterforEncounterPlus(creature)
-	xmlstr += '</compendium>\n'
+		if creature['name'] not in namesalreadyincompendium:
+			verboseprint(creature['name'] + " added to compendium xml.")
+			compendiumxml.append(makeMonsterforEncounterPlus(creature))
+		else:
+			verboseprint(creature['name'] + " already in compendium xml, appears to be duplicate, skipping.")
 
-	return xmlstr
+	return compendiumxml
 
 def generateCSV(creatures):
 	columns = ['name','size','type','alignment','ac','speed','strength','dexterity','constitution','intelligence','wisdom','charisma','savingthrows','skills','damagevulnerabilities','damageresistances','damageimmunities','conditionimmunities','senses','languages','challenge','attributes','actions','reactions','legendaryactions']
@@ -260,14 +285,26 @@ def generatePlainText(creatures):
 
 
 # ============= OUTPUT =============
-def writeTextToFile(outputcontent, extension):
+def writeXMLToFile(outputcontent):
 	timestamp = time.strftime("%Y%m%d-%H%M%S")
-	newfilepath = "/tmp/dndouput-" + timestamp + "." + extension
+	newfileprefix = "/tmp/dndouput-" + timestamp 
+	newfilepath = newfileprefix + ".xml"
+
+	verboseprint("Creating XML file " + newfilepath)
+	tree = ET.ElementTree(outputcontent)
 	outputfile = open(newfilepath, "wb")
-	outputfile.write(outputcontent)
+	tree.write(outputfile)
 	outputfile.close()
 
-	return newfilepath
+	formattedfilepath = newfileprefix + "-formatted.xml"
+	outputfile = open(formattedfilepath, "wb")
+	verboseprint("Attempting to format")
+	proc = Popen(['xmllint','--format',newfilepath], stdout=outputfile)
+	proc.wait()
+
+	outputfile.close()
+
+	return formattedfilepath
 
 def writeCSVtoFile(outputcontent):
 	timestamp = time.strftime("%Y%m%d-%H%M%S")
@@ -303,8 +340,8 @@ def run():
 	dnddata = createDictFromData(dnddata)
 
 	if args.output == 'xml':
-		outputcontent = generateXMLforEncounterPlus(dnddata)
-		newfilepath = writeTextToFile(outputcontent,'xml')
+		outputcontent = generateXMLforEncounterPlus(dnddata, args.xmlinclude)
+		newfilepath = writeXMLToFile(outputcontent)
 	
 	if args.output == 'console':
 		outputcontent = generatePlainText(dnddata)
@@ -312,7 +349,7 @@ def run():
 
 	if args.output == 'txt':
 		outputcontent = generatePlainText(dnddata)
-		newfilepath = writeTextToFile(outputcontent, 'txt')
+		newfilepath = writeXMLToFile(outputcontent)
 
 	if args.output == 'csv':
 		outputcontent = generateCSV(dnddata)
