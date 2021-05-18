@@ -17,7 +17,7 @@ CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n+(?P<metadata>.+?)\n+Armor Class 
 ITEM_PATTERN = re.compile(r'^(?P<itemtitle>.{0,45})\. (?P<itemdescription>[\S\s]+?(?=^.{0,45}\.|\Z))', re.MULTILINE)
 METADATA_PATTERN = re.compile(r'(?P<size>Tiny|Small|Medium|Large|Huge|Gargantuan) (?P<type>.+), (?P<alignment>.+)$', re.MULTILINE)
 CRUFT_PATTERN = re.compile(r'<.+?>', re.MULTILINE)
-KEEP_PATTERN = re.compile(r'((.+)?\n){3}Armor Class[\S\s]+?([\s]+?\n){5}', re.MULTILINE)
+KEEP_PATTERN = re.compile(r'((.+)?\n){3}Armor Class[\S\s]+?([\s]+?\n){6}', re.MULTILINE)
 RATING_PATTERN = re.compile(r'[0-9]+(\/[0-9]+)?(?= \()', re.MULTILINE)
 PERCEPTION_PATTERN = re.compile(r'(?<=Perception )(\+|-)?[0-9]+', re.MULTILINE)
 TEST_PATTERN = re.compile(r'\nArmor Class (?P<ac>.+)\n.+', re.MULTILINE)
