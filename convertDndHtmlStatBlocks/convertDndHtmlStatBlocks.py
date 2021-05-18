@@ -13,7 +13,7 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 # ============= PATTERNS =============
-CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n(?P<metadata>.+?)\nArmor Class (?P<ac>.+)\nHit Points (?P<hp>.+)\nSpeed (?P<speed>.+)\n+STR\n(?P<strength>[0-9]+).+\n+DEX\n(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n(?P<intelligence>[0-9]+).+\n+WIS\n(?P<wisdom>[0-9]+).+\n+CHA\n(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n)?(Skills (?P<skills>.+)\n)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n)?(Damage Resistances (?P<damageresistances>.+)\n)?(Damage Immunities (?P<damageimmunities>.+)\n)?(Condition Immunities (?P<conditionimmunities>.+)\n)?(Senses (?P<senses>.+)\n)?(Languages (?P<languages>.+)\n)?(Challenge (?P<challenge>.+)\n)?(?P<attributes>[\S\s]+?)??Actions(.+)??\n(?P<actions>[\S\s]+?)(\nReactions\n(?P<reactions>[\S\s]+?))?(\nLegendary Actions\n(?P<legendaryactions>[\S\s]+?))?\n{2}', re.MULTILINE)
+CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n+(?P<metadata>.+?)\n+Armor Class (?P<ac>.+)\n+Hit Points (?P<hp>.+)\n+Speed (?P<speed>.+)\n+STR\n+(?P<strength>[0-9]+).+\n+DEX\n+(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n+(?P<intelligence>[0-9]+).+\n+WIS\n+(?P<wisdom>[0-9]+).+\n+CHA\n+(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n+)?(Skills (?P<skills>.+)\n+)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n+)?(Damage Resistances (?P<damageresistances>.+)\n+)?(Damage Immunities (?P<damageimmunities>.+)\n+)?(Condition Immunities (?P<conditionimmunities>.+)\n+)?(Senses (?P<senses>.+)\n+)?(Languages (?P<languages>.+)\n+)?(Challenge (?P<challenge>.+)\n+)?(?P<attributes>[\S\s]+?)??Actions(.+)??\n+(?P<actions>[\S\s]+?)(\n+Reactions\n+(?P<reactions>[\S\s]+?))?(\n+Legendary Actions\n+(?P<legendaryactions>[\S\s]+?))?\n{2}', re.MULTILINE)
 ITEM_PATTERN = re.compile(r'^(?P<itemtitle>.{0,45})\. (?P<itemdescription>[\S\s]+?(?=^.{0,45}\.|\Z))', re.MULTILINE)
 METADATA_PATTERN = re.compile(r'(?P<size>Tiny|Small|Medium|Large|Huge|Gargantuan) (?P<type>.+), (?P<alignment>.+)$', re.MULTILINE)
 CRUFT_PATTERN = re.compile(r'<.+?>', re.MULTILINE)
@@ -32,41 +32,41 @@ parser.add_argument('--verbose','-v', help='For debugging', action="store_true",
 
 # ============= PROCESSING =============
 
-# preprocessHtml reads content from files and prepares them for processing
+# PreprocessHtml reads content from files and prepares them for processing
 # Removes a bunch of unused stuff from the files for efficiency, and subs for special chars that break things that aren't html
 # Returns one string with the processed content from the files
 def preprocessHtml(files):
-	results = "" # used to store results across multiple files
+	results = "" # Used to store results across multiple files
 	
-	files = files.replace("\ ","&nbsp;") #super hacky. should do this right with a regex.
+	files = files.replace("\ ","&nbsp;") # Super hacky, should do this right with a regex
 
 	for file in files.split(" "):
 
-		file = file.replace("&nbsp;", " ") # like i said... super hacky.
+		file = file.replace("&nbsp;", " ") # Like i said... super hacky
 
 		verboseprint("processing " + str(file))
-		processedfile = "" # used to store reuslts for one particular file at a time
+		processedfile = "" # Used to store results for one particular file at a time
 		reader = open(file, "r")
 
 		for line in reader:
 			processedfile += str(line)
 
-		# ditch all the <span>'s and <div>'s and html we don't care about 
+		# Ditch all the <span>'s and <div>'s and html we don't care about 
 		processedfile = re.sub(CRUFT_PATTERN, '', processedfile)
 
-		# just keep the body of the page where the stack blocks live, not necessary but more efficient
+		# Just keep the body of the page where the stack blocks live, not necessary but more efficient
 		processedfile = re.search(KEEP_PATTERN, processedfile).group()
 
-		# for some reason there's somtimes a line break and a non-breaking space. Get ridda that...
+		# For some reason there's somtimes a line break and a non-breaking space. Get ridda that...
 		processedfile = processedfile.replace("\n&nbsp;","")
 
-		# a bunch of special html characters that will break the xml and csv output
-		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5'}
+		# A bunch of special html characters that will break the xml and csv output, and some newline standardization
+		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5', "\r":"\n", "\n\n":"\n"}
 		for badstr, goodstr in replacements.iteritems():
 			verboseprint("Replacing " + badstr + " with " + goodstr)
 			processedfile = processedfile.replace(badstr, goodstr)
 
-		# done, add it to the complete results for all files
+		# Done, add it to the complete results for all files
 		results += processedfile
 
 	verboseprint("Combined output after substitutions / removals: " + results)
@@ -95,7 +95,7 @@ def createDictFromData(incomingdata):
 	#matches = re.findall(TEST_PATTERN, incomingdata)
 	verboseprint("Matches found:" + str(len(matches)))
 
-	# create arrays of actions / attributes / etc 
+	# Create arrays of actions / attributes / etc 
 	for match in matches:
 		if match['attributes'] != None:
 			match['attributesarray'] = createItemList(match['attributes'])
@@ -128,8 +128,8 @@ def createDictFromData(incomingdata):
 	matches = sorted(matches, key=lambda k: k['name']) 
 	return matches
 
-# given a dictionary and a number of indents to put before each value
-# turns it into a string in XML format
+# Given a dictionary and a number of indents to put before each value
+# Turns it into a string in XML format
 def dictToXML(data):
 	indentation = ""
 	xmlstr = ""
@@ -153,10 +153,10 @@ def createXMLElementsFromDict(topelementname, subelementdict, basexml):
 # Changes the data structure to align with what Encounter Plus expects for each monster
 # Turns the dict for each monster into an XML block for each monster
 def makeMonsterforEncounterPlus(creature):
-	#get a dict of just the values EncounterPlus cares about
+	# Get a dict of just the values EncounterPlus cares about
 	data_for_ep_monster = {}
 
-	#start with the straight tanslatable...
+	# Start with the straight tanslatable...
 	data_for_ep_monster = {'name':creature['name'],
 		'size':creature['metadatadict']['sizeabbreviated'],
 		'type':creature['metadatadict']['type'],
@@ -173,9 +173,9 @@ def makeMonsterforEncounterPlus(creature):
 		'passive':creature['passiveperception']
 		}
 
-	# weird requirement for encounter plus; doesn't correlate to a value in stat blocks... so just calling them all enemies.
+	# Weird requirement for encounter plus; doesn't correlate to a value in stat blocks... so just calling them all enemies.
 	data_for_ep_monster['role'] = "enemy"
-	# another weird requirement for Encounter Plus; "slug" is just the name in lower case with hyphens instead of spaces.
+	# Another weird requirement for Encounter Plus; "slug" is just the name in lower case with hyphens instead of spaces.
 	data_for_ep_monster['slug'] = creature['name'].lower().replace(" ", "-")
 	# Encounter Plus wants the CR number only, no XP amount.
 	if creature['challenge'] != None:
@@ -183,18 +183,18 @@ def makeMonsterforEncounterPlus(creature):
 	else:
 		data_for_ep_monster['cr'] = 0
 	
-	# time to start creating some XML!
+	# Time to start creating some XML!
 	xmlmonster = ET.Element('monster')
 
-	# encounter plus wants a UUID for "id" of each monster
+	# Encounter+ wants a UUID for "id" of each monster
 	xmlmonster.set('id', str(uuid.uuid4(	)))
 
-	# add all the stuff that's simple to correlate from above
+	# Add all the stuff that's simple to correlate from above
 	for key in data_for_ep_monster.keys():
 		newelement = ET.SubElement(xmlmonster, key)
 		newelement.text = str(data_for_ep_monster[key])
 
-	#deal with the fancier ones, that might be "none" or might be multiple values (eg actions, reactions, etc)
+	# Deal with the fancier ones, that might be "none" or might be multiple values (eg actions, reactions, etc)
 	if creature['attributes'] != None:
 		for item in creature['attributesarray']:
 			xmlmonster = createXMLElementsFromDict('trait',item,xmlmonster)
