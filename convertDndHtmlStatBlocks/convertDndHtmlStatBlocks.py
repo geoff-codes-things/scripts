@@ -61,7 +61,7 @@ def preprocessHtml(files):
 		processedfile = processedfile.replace("\n&nbsp;","")
 
 		# A bunch of special html characters that will break the xml and csv output, and some newline standardization
-		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5', "\r":"\n", "\n\n":"\n"}
+		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5', "\r\n":"\n"}
 		for badstr, goodstr in replacements.iteritems():
 			verboseprint("Replacing " + badstr + " with " + goodstr)
 			processedfile = processedfile.replace(badstr, goodstr)
