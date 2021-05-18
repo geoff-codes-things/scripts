@@ -260,28 +260,29 @@ def generateItemsText(heading,items):
 
 
 def generatePlainText(creatures):
-	plainttextstr = ""
+	plaintextstr = ""
 
-	plainttextstr += ("Here are your creatures!\n\n")
+	plaintextstr += ("Here are your creatures!\n\n")
 
 	for creature in creatures:
-		plainttextstr += ("======== " + creature['name'].upper() + " ========\n")
-		plainttextstr += ("Size: " + creature['metadatadict']['size'] + " || Type: " + creature['metadatadict']['type'] + " || Alignment: " + creature['metadatadict']['alignment'] + "\n")
-		plainttextstr += ("STR " + creature['strength'] + " || DEX " + creature['dexterity'] + " || INT " + creature['intelligence'] + " || CON " + creature['constitution'] + " || CHA " + creature['charisma'] + "\n")
-		plainttextstr += ("AC: " + creature['ac'] + " || HP: " + creature['hp'] + " || Speed: " + creature['speed'] + "\n")
-		plainttextstr += ("\n")
+		plaintextstr += ("======== " + creature['name'].upper() + " ========\n")
+		plaintextstr += ("Size: " + creature['metadatadict']['size'] + " || Type: " + creature['metadatadict']['type'] + " || Alignment: " + creature['metadatadict']['alignment'] + "\n")
+		plaintextstr += ("STR " + creature['strength'] + " || DEX " + creature['dexterity'] + " || CON " + creature['constitution'] + " || INT " + creature['intelligence'] + " || WIS " + creature['wisdom'] + " || CHA " + creature['charisma'] + "\n")
+		plaintextstr += ("AC: " + creature['ac'] + " || HP: " + creature['hp'] + " || Speed: " + creature['speed'] + "\n")
+		plaintextstr += ("Senses: " + creature['senses'] + "\n")
+		plaintextstr += ("\n")
 		if creature['attributes'] != None:
-			plainttextstr += generateItemsText("Attributes", creature['attributesarray'])
+			plaintextstr += generateItemsText("Attributes", creature['attributesarray'])
 		if creature['actions'] != None:
-			plainttextstr += generateItemsText("Actions", creature['actionsarray'])
+			plaintextstr += generateItemsText("Actions", creature['actionsarray'])
 		if creature['reactions'] != None:
-			plainttextstr += generateItemsText("Reactions", creature['reactionsarray'])
+			plaintextstr += generateItemsText("Reactions", creature['reactionsarray'])
 		if creature['legendaryactions'] != None:
-			plainttextstr += generateItemsText("Legendary Actions", creature['legendaryactionsarray'])
+			plaintextstr += generateItemsText("Legendary Actions", creature['legendaryactionsarray'])
 
-		plainttextstr += "\n"
+		plaintextstr += "\n"
 
-	return plainttextstr
+	return plaintextstr
 
 
 # ============= OUTPUT =============
