@@ -32,7 +32,7 @@ parser.add_argument('--verbose','-v', help='For debugging', action="store_true",
 
 # ============= PROCESSING =============
 
-# PreprocessHtml reads content from files and prepares them for processing
+# preprocessHtml reads content from files and prepares them for processing
 # Removes a bunch of unused stuff from the files for efficiency, and subs for special chars that break things that aren't html
 # Returns one string with the processed content from the files
 def preprocessHtml(files):
