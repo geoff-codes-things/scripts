@@ -13,13 +13,12 @@ reload(sys)
 sys.setdefaultencoding("utf-8")
 
 # ============= PATTERNS =============
-CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n(?P<metadata>.+?)\nArmor Class (?P<ac>.+)\nHit Points (?P<hp>.+)\nSpeed (?P<speed>.+)\n+STR\n(?P<strength>[0-9]+).+\n+DEX\n(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n(?P<intelligence>[0-9]+).+\n+WIS\n(?P<wisdom>[0-9]+).+\n+CHA\n(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n)?(Skills (?P<skills>.+)\n)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n)?(Damage Resistances (?P<damageresistances>.+)\n)?(Damage Immunities (?P<damageimmunities>.+)\n)?(Condition Immunities (?P<conditionimmunities>.+)\n)?(Senses (?P<senses>.+)\n)?(Languages (?P<languages>.+)\n)?(Challenge (?P<challenge>.+)\n)?(?P<attributes>[\S\s]+?)??Actions(.+)??\n(?P<actions>[\S\s]+?)(\nReactions\n(?P<reactions>[\S\s]+?))?(\nLegendary Actions\n(?P<legendaryactions>[\S\s]+?))?\n{2}', re.MULTILINE)
+CREATURE_PATTERN = re.compile(r'(?P<name>.+?)\n+(?P<metadata>.+?)\n+Armor Class (?P<ac>.+)\n+Hit Points (?P<hp>.+)\n+Speed (?P<speed>.+)\n+STR\n+(?P<strength>[0-9]+).+\n+DEX\n+(?P<dexterity>[0-9]+).+\n+CON\n(?P<constitution>[0-9]+).+\n+INT\n+(?P<intelligence>[0-9]+).+\n+WIS\n+(?P<wisdom>[0-9]+).+\n+CHA\n+(?P<charisma>[0-9]+).+\n+(Saving Throws (?P<savingthrows>.+)\n+)?(Skills (?P<skills>.+)\n+)?(Damage Vulnerabilities (?P<damagevulnerabilities>.+)\n+)?(Damage Resistances (?P<damageresistances>.+)\n+)?(Damage Immunities (?P<damageimmunities>.+)\n+)?(Condition Immunities (?P<conditionimmunities>.+)\n+)?(Senses (?P<senses>.+)\n+)?(Languages (?P<languages>.+)\n+)?(Challenge (?P<challenge>.+)\n+)?(?P<attributes>[\S\s]+?)??Actions(.+)??\n+(?P<actions>[\S\s]+?)(\n+Reactions\n+(?P<reactions>[\S\s]+?))?(\n+Legendary Actions\n+(?P<legendaryactions>[\S\s]+?))?(\n+Mythic Actions\n+(?P<mythicactions>[\S\s]+?))?\n{2}', re.MULTILINE)
 ITEM_PATTERN = re.compile(r'^(?P<itemtitle>.{0,45})\. (?P<itemdescription>[\S\s]+?(?=^.{0,45}\.|\Z))', re.MULTILINE)
 METADATA_PATTERN = re.compile(r'(?P<size>Tiny|Small|Medium|Large|Huge|Gargantuan) (?P<type>.+), (?P<alignment>.+)$', re.MULTILINE)
 CRUFT_PATTERN = re.compile(r'<.+?>', re.MULTILINE)
-KEEP_PATTERN = re.compile(r'((.+)?\n){3}Armor Class[\S\s]+?([\s]+?\n){5}', re.MULTILINE)
+KEEP_PATTERN = re.compile(r'((.+)?\n){3}Armor Class[\S\s]+?([\s]+?\n){8}', re.MULTILINE)
 RATING_PATTERN = re.compile(r'[0-9]+(\/[0-9]+)?(?= \()', re.MULTILINE)
-PERCEPTION_PATTERN = re.compile(r'(?<=Perception )(\+|-)?[0-9]+', re.MULTILINE)
 TEST_PATTERN = re.compile(r'\nArmor Class (?P<ac>.+)\n.+', re.MULTILINE)
 
 
@@ -37,8 +36,8 @@ parser.add_argument('--verbose','-v', help='For debugging', action="store_true",
 # Returns one string with the processed content from the files
 def preprocessHtml(files):
 	results = "" # used to store results across multiple files
-	
-	files = files.replace("\ ","&nbsp;") #super hacky. should do this right with a regex.
+
+	files = files.replace("\ ","&nbsp;") # super hacky. should do this right with a regex.
 
 	for file in files.split(" "):
 
@@ -51,7 +50,7 @@ def preprocessHtml(files):
 		for line in reader:
 			processedfile += str(line)
 
-		# ditch all the <span>'s and <div>'s and html we don't care about 
+		# ditch all the <span>'s and <div>'s and html we don't care about
 		processedfile = re.sub(CRUFT_PATTERN, '', processedfile)
 
 		# just keep the body of the page where the stack blocks live, not necessary but more efficient
@@ -61,7 +60,7 @@ def preprocessHtml(files):
 		processedfile = processedfile.replace("\n&nbsp;","")
 
 		# a bunch of special html characters that will break the xml and csv output
-		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5'}
+		replacements = {"&minus;":"-", "&mdash;":"-", "&ndash;":"-", "&rsquo;":"'", "&nbsp;":" ", "&ldquo;":'"', "&rdquo;":'"', "&times;":'x', "&frac12;":'.5', "\r\n":"\n"}
 		for badstr, goodstr in replacements.iteritems():
 			verboseprint("Replacing " + badstr + " with " + goodstr)
 			processedfile = processedfile.replace(badstr, goodstr)
@@ -95,7 +94,7 @@ def createDictFromData(incomingdata):
 	#matches = re.findall(TEST_PATTERN, incomingdata)
 	verboseprint("Matches found:" + str(len(matches)))
 
-	# create arrays of actions / attributes / etc 
+	# create arrays of actions / attributes / etc
 	for match in matches:
 		if match['attributes'] != None:
 			match['attributesarray'] = createItemList(match['attributes'])
@@ -105,6 +104,8 @@ def createDictFromData(incomingdata):
 			match['reactionsarray'] = createItemList(match['reactions'])
 		if match['legendaryactions'] != None:
 			match['legendaryactionsarray'] = createItemList(match['legendaryactions'])
+		if match['mythicactions'] != None:
+			match['mythicactionsarray'] = createItemList(match['mythicactions'])
 
 		if match['metadata'] != None:
 			metadamatch = re.match(METADATA_PATTERN, match['metadata'])
@@ -112,20 +113,7 @@ def createDictFromData(incomingdata):
 			metadatadict = {'size' : metadatadictraw['size'], 'sizeabbreviated' : metadatadictraw['size'][0].upper(), 'type' : metadatadictraw['type'], 'alignment' : metadatadictraw['alignment']}
 			match['metadatadict'] = metadatadict
 
-		# If it's listed, pull the passive perception value. If not, calculate one.
-		if match['senses'] != None:
-			if re.search(PERCEPTION_PATTERN, match['senses']):
-				passiveperception = int(re.search(PERCEPTION_PATTERN, match['senses']).group())
-			else:
-				perceptionbonus = 0
-				if match['skills'] != None:
-					if re.search(PERCEPTION_PATTERN, match['skills']):
-						perceptionbonus = int(re.search(PERCEPTION_PATTERN, match['skills']).group())	
-				passiveperception = int((float(match['wisdom']) - 10.0)/2.0) + perceptionbonus
-		match['passiveperception'] = passiveperception
-
-
-	matches = sorted(matches, key=lambda k: k['name']) 
+	matches = sorted(matches, key=lambda k: k['name'])
 	return matches
 
 # given a dictionary and a number of indents to put before each value
@@ -170,7 +158,7 @@ def makeMonsterforEncounterPlus(creature):
 		'int':creature['intelligence'],
 		'wis':creature['wisdom'],
 		'cha':creature['charisma'],
-		'passive':creature['passiveperception']
+		'senses':creature['senses']
 		}
 
 	# weird requirement for encounter plus; doesn't correlate to a value in stat blocks... so just calling them all enemies.
@@ -182,7 +170,7 @@ def makeMonsterforEncounterPlus(creature):
 		data_for_ep_monster['cr'] = re.search(RATING_PATTERN, creature['challenge']).group()
 	else:
 		data_for_ep_monster['cr'] = 0
-	
+
 	# time to start creating some XML!
 	xmlmonster = ET.Element('monster')
 
@@ -207,6 +195,9 @@ def makeMonsterforEncounterPlus(creature):
 	if creature['legendaryactions'] != None:
 		for item in creature['legendaryactionsarray']:
 			xmlmonster = createXMLElementsFromDict('legendary',item,xmlmonster)
+	if creature['mythicactions'] != None:
+		for item in creature['mythicactionsarray']:
+			xmlmonster = createXMLElementsFromDict('mythic',item,xmlmonster)
 
 
 	return xmlmonster
@@ -214,7 +205,7 @@ def makeMonsterforEncounterPlus(creature):
 def generateXMLforEncounterPlus(creatures, startingxml):
 	verboseprint("converting " + str(len(creatures)) + " creatures to XML.")
 	namesalreadyincompendium = []
-	
+
 	if startingxml:
 		basexml = ET.parse(startingxml)
 		compendiumxml = basexml.getroot()
@@ -232,7 +223,7 @@ def generateXMLforEncounterPlus(creatures, startingxml):
 	return compendiumxml
 
 def generateCSV(creatures):
-	columns = ['name','size','type','alignment','ac','speed','strength','dexterity','constitution','intelligence','wisdom','charisma','savingthrows','skills','damagevulnerabilities','damageresistances','damageimmunities','conditionimmunities','senses','languages','challenge','attributes','actions','reactions','legendaryactions']
+	columns = ['name','size','type','alignment','ac','speed','strength','dexterity','constitution','intelligence','wisdom','charisma','savingthrows','skills','damagevulnerabilities','damageresistances','damageimmunities','conditionimmunities','senses','languages','challenge','attributes','actions','reactions','legendaryactions','mythicactions']
 
 	outputcontent = [columns]
 
@@ -260,34 +251,38 @@ def generateItemsText(heading,items):
 
 
 def generatePlainText(creatures):
-	plainttextstr = ""
+	plaintextstr = ""
 
-	plainttextstr += ("Here are your creatures!\n\n")
+	plaintextstr += ("Here are your creatures!\n\n")
 
 	for creature in creatures:
-		plainttextstr += ("======== " + creature['name'].upper() + " ========\n")
-		plainttextstr += ("Size: " + creature['metadatadict']['size'] + " || Type: " + creature['metadatadict']['type'] + " || Alignment: " + creature['metadatadict']['alignment'] + "\n")
-		plainttextstr += ("STR " + creature['strength'] + " || DEX " + creature['dexterity'] + " || INT " + creature['intelligence'] + " || CON " + creature['constitution'] + " || CHA " + creature['charisma'] + "\n")
-		plainttextstr += ("AC: " + creature['ac'] + " || HP: " + creature['hp'] + " || Speed: " + creature['speed'] + "\n")
-		plainttextstr += ("\n")
+		plaintextstr += ("======== " + creature['name'].upper() + " ========\n")
+		plaintextstr += ("Size: " + creature['metadatadict']['size'] + " || Type: " + creature['metadatadict']['type'] + " || Alignment: " + creature['metadatadict']['alignment'] + "\n")
+		plaintextstr += ("STR " + creature['strength'] + " || DEX " + creature['dexterity'] + " || CON " + creature['constitution'] + " || INT " + creature['intelligence'] + " || WIS " + creature['wisdom'] + " || CHA " + creature['charisma'] + "\n")
+		plaintextstr += ("AC: " + creature['ac'] + " || HP: " + creature['hp'] + " || Speed: " + creature['speed'] + "\n")
+		if creature['senses'] != None:
+			plaintextstr += ("Senses: " + creature['senses'] + "\n")
+		plaintextstr += ("\n")
 		if creature['attributes'] != None:
-			plainttextstr += generateItemsText("Attributes", creature['attributesarray'])
+			plaintextstr += generateItemsText("Attributes", creature['attributesarray'])
 		if creature['actions'] != None:
-			plainttextstr += generateItemsText("Actions", creature['actionsarray'])
+			plaintextstr += generateItemsText("Actions", creature['actionsarray'])
 		if creature['reactions'] != None:
-			plainttextstr += generateItemsText("Reactions", creature['reactionsarray'])
+			plaintextstr += generateItemsText("Reactions", creature['reactionsarray'])
 		if creature['legendaryactions'] != None:
-			plainttextstr += generateItemsText("Legendary Actions", creature['legendaryactionsarray'])
+			plaintextstr += generateItemsText("Legendary Actions", creature['legendaryactionsarray'])
+		if creature['mythicactions'] != None:
+			plaintextstr += generateItemsText("Mythic Actions", creature['mythicactionsarray'])
 
-		plainttextstr += "\n"
+		plaintextstr += "\n"
 
-	return plainttextstr
+	return plaintextstr
 
 
 # ============= OUTPUT =============
 def writeXMLToFile(outputcontent):
 	timestamp = time.strftime("%Y%m%d-%H%M%S")
-	newfileprefix = "/tmp/dndouput-" + timestamp 
+	newfileprefix = "/tmp/dndouput-" + timestamp
 	newfilepath = newfileprefix + ".xml"
 
 	verboseprint("Creating XML file " + newfilepath)
@@ -333,7 +328,7 @@ def getverbosefunc(verboseenabled):
 
            	return verboseprintfunc
         else:
-        	return lambda *a: None 
+        	return lambda *a: None
 
 def run():
 	global verboseprint
@@ -350,7 +345,7 @@ def run():
 	if args.output == 'xml':
 		outputcontent = generateXMLforEncounterPlus(dnddata, args.xmlinclude)
 		newfilepath = writeXMLToFile(outputcontent)
-	
+
 	if args.output == 'console':
 		outputcontent = generatePlainText(dnddata)
 		print(outputcontent)
