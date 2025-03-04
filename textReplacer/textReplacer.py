@@ -39,7 +39,7 @@ def readTextFile(textFile):
     except FileNotFoundError:
         sys.exit(f"Text file '{textFile}' not found.")
 
-# Reads a text file in.
+# Reads a csv file in.
 # If file can't be found or doesn't match expected format, bails the script with an error
 # Expected format is a two column csv with headers 'beforeReplacement' and 'afterReplacement'
 def readCsvFile(csvFile, reverse):
